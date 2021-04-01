@@ -17,8 +17,11 @@
 
 MOCK_SERVER_IP=127.0.0.1
 MOCK_SERVER_PORT=28200
+<<<<<<< HEAD
 RMQ_SELF_STARTED=0
 RMQ_SELF_STOPPED=0
+=======
+>>>>>>> main
 IS_VIRTUAL=$(facter is_virtual)
 
 [[ $EUID -ne 0 ]] && sudo=sudo
@@ -72,6 +75,7 @@ pre_requisites()
         fi
     fi
 
+<<<<<<< HEAD
     systemctl status rabbitmq-server 1>/dev/null && export status=true || export status=false
 
     if [ "$avoid_rmq" == "False" ]; then
@@ -90,6 +94,8 @@ pre_requisites()
         fi
     fi
 
+=======
+>>>>>>> main
     # Enable ipmi simulator
     if [ "$IS_VIRTUAL" == "true" ]
     then
@@ -173,20 +179,6 @@ restore_cfg_services()
         echo "Stopping mock server"
         kill_mock_server
         deleteMockedInterface
-    fi
-
-    if [ "$RMQ_SELF_STARTED" -eq 1 ]
-    then
-        echo "Stopping rabbitmq server as was started for tests"
-        systemctl stop rabbitmq-server
-        RMQ_SELF_STARTED=0
-    fi
-
-    if [ "$RMQ_SELF_STOPPED" -eq 1 ]
-    then
-        echo "Starting rabbitmq server as was stopped for tests"
-        systemctl start rabbitmq-server
-        RMQ_SELF_STOPPED=0
     fi
 
     # Remove ipmisimtool
@@ -389,10 +381,19 @@ fi
 
 if [ "$IS_VIRTUAL" == "true" ]
 then
+    # consume all alerts before SSPL restarts. So sspl_start_checker
+    # waits till SSPL initialized, if previous alerts are availble,
+    # sspl_start_checker will use those and test cases will be executed
+    # before SSPL initialization
+    $script_dir/rabbitmq/consume.py
     echo "Restarting SSPL"
     $sudo systemctl restart sspl-ll
     echo "Waiting for SSPL to complete initialization of all the plugins.."
+<<<<<<< HEAD
     $script_dir/rabbitmq_start_checker sspl-out sensor-key
+=======
+    $script_dir/sspl_start_checker
+>>>>>>> main
 fi
 
 echo "Initialization completed. Starting tests"

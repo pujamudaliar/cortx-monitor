@@ -13,6 +13,10 @@
 # please email opensource@seagate.com or cortx-questions@seagate.com.
 
 import shutil
+<<<<<<< HEAD
+=======
+import os
+>>>>>>> main
 
 from cortx.utils.process import SimpleProcess
 from cortx.utils.conf_store import Conf
@@ -28,6 +32,10 @@ from framework.base.sspl_constants import (PRODUCT_FAMILY,
                                            SSPL_CONFIG_INDEX,
                                            SSPL_TEST_CONFIG_INDEX)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 TEST_DIR = f"/opt/seagate/{PRODUCT_FAMILY}/sspl/sspl_test"
 
 class SSPLTestCmd:
@@ -46,6 +54,21 @@ class SSPLTestCmd:
         Conf.load(GLOBAL_CONFIG_INDEX, global_config_url)
         Conf.load(SSPL_TEST_CONFIG_INDEX, sspl_test_config_path)
 
+<<<<<<< HEAD
+=======
+    @staticmethod
+    def validate():
+        """Check for required packages are installed."""
+        # python 3rd party package dependency
+        pip3_3ps_packages_test = {
+            "Flask": "1.1.1"
+        }
+        pkg_validator = PkgV()
+        pkg_validator.validate_pip3_pkgs(host=None,
+                                         pkgs=pip3_3ps_packages_test,
+                                         skip_version_check=False)
+
+>>>>>>> main
     def process(self):
         self.plan = self.args.plan[0]
         self.avoid_rmq = self.args.avoid_rmq
@@ -73,6 +96,53 @@ class SSPLTestCmd:
                  "RABBITMQEGRESSPROCESSOR>password", rmq_passwd)
         Conf.save(SSPL_TEST_CONFIG_INDEX)
 
+<<<<<<< HEAD
+=======
+        # TODO: Move lines 90-116 & 125-127 to RunQATest class
+        # Create dummy service and add service name in /etc/sspl.conf
+        service_name = "dummy_service.service"
+        service_file_path_src = f"{TEST_DIR}/alerts/os/dummy_service_files/dummy_service.service"
+        service_executable_code_src = f"{TEST_DIR}/alerts/os/dummy_service_files/dummy_service.py"
+        service_file_path_des = "/etc/systemd/system"
+        service_executable_code_des = "/var/cortx/sspl/test"
+
+        os.makedirs(service_executable_code_des, 0o777, exist_ok=True)
+
+        shutil.copy(service_executable_code_src,
+                    f'{service_executable_code_des}/dummy_service.py')
+        # Make service file executable.
+        cmd = f"chmod +x {service_executable_code_des}/dummy_service.py"
+        _, error, returncode = SimpleProcess(cmd).run()
+        if returncode !=0:
+            print("%s error occurred while executing cmd: %s" %(error, cmd))
+            print("failed to assign execute permission for dummy_service.py."\
+                    " dummy_service will fail.")
+
+        # Copy service file to /etc/systemd/system/ path.
+        shutil.copyfile(service_file_path_src,
+                        f'{service_file_path_des}/dummy_service.service')
+        cmd= "systemctl daemon-reload"
+        _, error, returncode = SimpleProcess(cmd).run()
+        if returncode !=0:
+                print(f"failed to execute '{cmd}', systemctl will be unable"\
+                    f" to manage the dummy_service.service \nError: {error}")
+
+        self.dbus_service.enable(service_name)
+        self.dbus_service.start(service_name)
+
+        service_list = Conf.get(SSPL_CONFIG_INDEX, "SERVICEMONITOR>monitored_services")
+        service_list.append(service_name)
+        Conf.set(SSPL_CONFIG_INDEX, "SERVICEMONITOR>monitored_services",
+            service_list)
+
+        threshold_inactive_time_original = Conf.get(SSPL_CONFIG_INDEX,
+                                    "SERVICEMONITOR>threshold_inactive_time")
+        threshold_inactive_time_new = 30
+        Conf.set(SSPL_CONFIG_INDEX, "SERVICEMONITOR>threshold_inactive_time",
+            threshold_inactive_time_new)
+        Conf.save(SSPL_CONFIG_INDEX)
+
+>>>>>>> main
         # TODO: Convert shell script to python
         # from cortx.sspl.sspl_test.run_qa_test import RunQATest
         # RunQATest(self.plan, self.avoid_rmq).run()
@@ -80,6 +150,14 @@ class SSPLTestCmd:
         output, error, returncode = SimpleProcess(CMD).run(realtime_output=True)
         # Restore the original path/file & service, then throw exception
         # if execution is failed.
+<<<<<<< HEAD
+=======
+        service_list.remove(service_name)
+        Conf.set(SSPL_CONFIG_INDEX,"SERVICEMONITOR>monitored_services",
+            service_list)
+        Conf.set(SSPL_CONFIG_INDEX, "SERVICEMONITOR>threshold_inactive_time",
+            threshold_inactive_time_original)
+>>>>>>> main
         Conf.set(SSPL_CONFIG_INDEX,
                  "SYSTEM_INFORMATION>global_config_copy_url", global_config_copy_url)
         Conf.save(SSPL_CONFIG_INDEX)

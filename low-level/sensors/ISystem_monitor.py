@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Seagate Technology LLC and/or its Affiliates
+# Copyright (c) 2001-2020 Seagate Technology LLC and/or its Affiliates
 #
 # This program is free software: you can redistribute it and/or modify it under the
 # terms of the GNU Affero General Public License as published by the Free Software
@@ -13,11 +13,17 @@
 # about this software or licensing, please email opensource@seagate.com or
 # cortx-questions@seagate.com.
 
-"""RabbitMQ processor for automated integration tests"""
+"""
+ ****************************************************************************
 
-from threading import Event
-from cortx.utils.message_bus import MessageBus
+  Description:       Interface for all system monitoring classes
+ ****************************************************************************
+"""
 
+from zope.interface import Interface
 
-message_bus = MessageBus()
-producer_initialized = Event()
+class ISystemMonitor(Interface):
+    """Interface for system monitoring classes."""
+
+    def read_data(self):
+        """Notifies service to send its data."""

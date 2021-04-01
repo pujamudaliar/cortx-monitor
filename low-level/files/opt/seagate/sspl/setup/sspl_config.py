@@ -25,11 +25,19 @@
 
 import os
 import shutil
+<<<<<<< HEAD
 import json
+=======
+>>>>>>> main
 import re
 import errno
 import consul
 
+<<<<<<< HEAD
+=======
+from cortx.utils.message_bus import MessageBus, MessageBusAdmin
+from cortx.utils.message_bus.error import MessageBusError
+>>>>>>> main
 from framework.base import sspl_constants as consts
 from cortx.utils.service import DbusServiceHandler
 from cortx.utils.process import SimpleProcess
@@ -40,7 +48,10 @@ from .conf_based_sensors_enable import update_sensor_info
 
 
 class SSPLConfig:
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
     """SSPL Setup Config Interface."""
 
     name = "config"
@@ -51,9 +62,17 @@ class SSPLConfig:
         # Load sspl and global configs
         Conf.load(consts.SSPL_CONFIG_INDEX, consts.sspl_config_path)
         global_config_url = Conf.get(
+<<<<<<< HEAD
             consts.SSPL_CONFIG_INDEX, "SYSTEM_INFORMATION>global_config_copy_url")
         Conf.load(consts.GLOBAL_CONFIG_INDEX, global_config_url)
         self.product = Conf.get(consts.GLOBAL_CONFIG_INDEX, 'release>product')
+=======
+            consts.SSPL_CONFIG_INDEX,
+            "SYSTEM_INFORMATION>global_config_copy_url")
+        Conf.load(consts.GLOBAL_CONFIG_INDEX, global_config_url)
+        self.product = Conf.get(consts.GLOBAL_CONFIG_INDEX, 'release>product')
+        self.topic_already_exists = "ALREADY_EXISTS"
+>>>>>>> main
 
     def validate(self):
         """Validate config for supported role and product"""
@@ -72,7 +91,11 @@ class SSPLConfig:
                 self.name,
                 "Role '%s' is not supported. Check Usage" % self.role)
 
+<<<<<<< HEAD
     def replace_expr(self, filename:str, key, new_str:str):
+=======
+    def replace_expr(self, filename: str, key, new_str: str):
+>>>>>>> main
 
         """The function helps to replace the expression provided as key
             with new string in the file provided in filename
@@ -92,14 +115,21 @@ class SSPLConfig:
                     lines.insert(key, new_str)
             else:
                 raise SetupError(
+<<<<<<< HEAD
                             errno.EINVAL,
                             "Key data type : '%s', should be string or int",
                             type(key))
+=======
+                    errno.EINVAL,
+                    "Key data type : '%s', should be string or int",
+                    type(key))
+>>>>>>> main
             f.seek(0)
             for line in lines:
                 f.write(line)
 
     def config_sspl(self):
+<<<<<<< HEAD
         if(os.geteuid() != 0):
             raise SetupError(
                         errno.EINVAL,
@@ -110,6 +140,18 @@ class SSPLConfig:
                         errno.EINVAL,
                         "Missing configuration!! Create and rerun.",
                         consts.file_store_config_path)
+=======
+        if (os.geteuid() != 0):
+            raise SetupError(
+                errno.EINVAL,
+                "Run this command with root privileges!!")
+
+        if not os.path.isfile(consts.file_store_config_path):
+            raise SetupError(
+                errno.EINVAL,
+                "Missing configuration!! Create and rerun.",
+                consts.file_store_config_path)
+>>>>>>> main
 
         # Put minion id, consul_host and consul_port in conf file
         # Onward LDR_R2, salt will be abstracted out and it won't
@@ -123,6 +165,7 @@ class SSPLConfig:
             os.remove(consts.SSPL_CONFIGURED)
 
         # Add sspl-ll user to required groups and sudoers file etc.
+<<<<<<< HEAD
         sspl_reinit = [f"{consts.SSPL_BASE_DIR}/low-level/framework/sspl_reinit", self.product]
         _ , error, returncode = SimpleProcess(sspl_reinit).run()
         if returncode:
@@ -130,6 +173,18 @@ class SSPLConfig:
                     "%s/low-level/framework/sspl_reinit failed for product %s with error : %e",
                       consts.SSPL_BASE_DIR, product, error
                     )
+=======
+        sspl_reinit = [
+            f"{consts.SSPL_BASE_DIR}/low-level/framework/sspl_reinit",
+            self.product]
+        _, error, returncode = SimpleProcess(sspl_reinit).run()
+        if returncode:
+            raise SetupError(returncode,
+                             "%s/low-level/framework/sspl_reinit failed for"
+                             "product %s with error : %e",
+                             consts.SSPL_BASE_DIR, self.product, error
+                             )
+>>>>>>> main
 
         os.makedirs(consts.SSPL_CONFIGURED_DIR, exist_ok=True)
         with open(consts.SSPL_CONFIGURED, 'a'):
@@ -143,10 +198,16 @@ class SSPLConfig:
             consts.SSPL_CONFIG_INDEX, 'IEMSENSOR>log_file_path')
         if SSPL_LOG_FILE_PATH:
             self.replace_expr(consts.RSYSLOG_SSPL_CONF,
+<<<<<<< HEAD
                         'File.*[=,"]', 'File="%s"' % SSPL_LOG_FILE_PATH)
             self.replace_expr(
                     f"{consts.SSPL_BASE_DIR}/low-level/files/etc/logrotate.d/sspl_logs",
                     0, SSPL_LOG_FILE_PATH)
+=======
+                              'File.*[=,"]', 'File="%s"' % SSPL_LOG_FILE_PATH)
+            self.replace_expr(f"{consts.SSPL_BASE_DIR}/low-level/files/etc/logrotate.d/sspl_logs",
+                              0, SSPL_LOG_FILE_PATH)
+>>>>>>> main
 
         # IEM configuration
         # Configure log file path in Rsyslog and logrotate configuration file
@@ -155,6 +216,7 @@ class SSPLConfig:
 
         if IEM_LOG_FILE_PATH:
             self.replace_expr(consts.RSYSLOG_IEM_CONF,
+<<<<<<< HEAD
                     'File.*[=,"]', 'File="%s"' % IEM_LOG_FILE_PATH)
             self.replace_expr(
                     f'{consts.SSPL_BASE_DIR}/low-level/files/etc/logrotate.d/iem_messages',
@@ -162,18 +224,38 @@ class SSPLConfig:
         else:
             self.replace_expr(consts.RSYSLOG_IEM_CONF,
                     'File.*[=,"]', 'File="/var/log/%s/iem/iem_messages"' % consts.PRODUCT_FAMILY)
+=======
+                              'File.*[=,"]', 'File="%s"' % IEM_LOG_FILE_PATH)
+            self.replace_expr(
+                f'{consts.SSPL_BASE_DIR}/low-level/files/etc/logrotate.d/iem_messages',
+                0, IEM_LOG_FILE_PATH)
+        else:
+            self.replace_expr(consts.RSYSLOG_IEM_CONF,
+                              'File.*[=,"]',
+                              'File="/var/log/%s/iem/iem_messages"' %
+                              consts.PRODUCT_FAMILY)
+>>>>>>> main
 
         # Create logrotate dir in case it's not present for dev environment
         if not os.path.exists(consts.LOGROTATE_DIR):
             os.makedirs(consts.LOGROTATE_DIR)
 
         shutil.copy2(
+<<<<<<< HEAD
             '%s/low-level/files/etc/logrotate.d/iem_messages' % consts.SSPL_BASE_DIR,
             consts.IEM_LOGROTATE_CONF)
 
         shutil.copy2(
             '%s/low-level/files/etc/logrotate.d/sspl_logs' % consts.SSPL_BASE_DIR,
             consts.SSPL_LOGROTATE_CONF)
+=======
+            '%s/low-level/files/etc/logrotate.d/iem_messages' %
+            consts.SSPL_BASE_DIR,
+            consts.IEM_LOGROTATE_CONF)
+
+        shutil.copy2('%s/low-level/files/etc/logrotate.d/sspl_logs' %
+                     consts.SSPL_BASE_DIR, consts.SSPL_LOGROTATE_CONF)
+>>>>>>> main
 
         # This rsyslog restart will happen after successful updation of rsyslog
         # conf file and before sspl starts. If at all this will be removed from
@@ -199,6 +281,7 @@ class SSPLConfig:
         # enable/disable sensor groups in the conf file accordingly.
         update_sensor_info(consts.SSPL_CONFIG_INDEX)
 
+<<<<<<< HEAD
     def get_rabbitmq_cluster_nodes(self):
         cluster_nodes = None
         if  self.rabbitmq_major_release == '3' and \
@@ -244,10 +327,42 @@ class SSPLConfig:
     def process(self):
         cmd = "config"
         if(cmd == "config"):
+=======
+        self.create_message_types()
+
+    def create_message_types(self):
+        # Skip this step if sspl is being configured for node
+        # replacement scenario as rabbitmq cluster is
+        # already configured on the healthy node
+        # Configure rabbitmq
+        if not os.path.exists(consts.REPLACEMENT_NODE_ENV_VAR_FILE):
+            message_types = [Conf.get(consts.SSPL_CONFIG_INDEX,
+                                      "RABBITMQINGRESSPROCESSOR"
+                                      ">message_type"),
+                             Conf.get(consts.SSPL_CONFIG_INDEX,
+                                      "RABBITMQEGRESSPROCESSOR"
+                                      ">message_type")]
+            mb = MessageBus()
+            mbadmin = MessageBusAdmin(mb, admin_id='admin')
+            try:
+                mbadmin.register_message_type(message_types=message_types,
+                                              partitions=1)
+            except MessageBusError as e:
+                if self.topic_already_exists in e.desc:
+                    # Topic already exists
+                    pass
+                else:
+                    raise e
+
+    def process(self):
+        cmd = "config"
+        if (cmd == "config"):
+>>>>>>> main
             self.config_sspl()
         else:
             raise SetupError(errno.EINVAL, "cmd val should be config")
 
+<<<<<<< HEAD
         # Get the version. Output can be 3.3.5 or 3.8.9 or in this format
         rmq_cmd = "rpm -qi rabbitmq-server"
         output, error, returncode = SimpleProcess(rmq_cmd).run()
@@ -290,35 +405,60 @@ class SSPLConfig:
                          'RABBITMQCLUSTER>cluster_nodes', pout)
                 Conf.save(consts.SSPL_CONFIG_INDEX)
 
+=======
+>>>>>>> main
         # Skip this step if sspl is being configured for node replacement
         # scenario as consul data is already
         # available on healthy node
         # Updating build requested log level
         if not os.path.exists(consts.REPLACEMENT_NODE_ENV_VAR_FILE):
+<<<<<<< HEAD
             with open(f'{consts.SSPL_BASE_DIR}/low-level/files/opt/seagate' + \
                 '/sspl/conf/build-requested-loglevel', 'r') as f:
+=======
+            with open(f'{consts.SSPL_BASE_DIR}/low-level/files/opt/seagate'
+                      '/sspl/conf/build-requested-loglevel', 'r') as f:
+>>>>>>> main
                 log_level = f.readline().strip()
 
             if not log_level:
                 log_level = "INFO"
 
+<<<<<<< HEAD
             if  log_level == "DEBUG" or log_level == "INFO" or \
                 log_level == "WARNING" or log_level == "ERROR" or \
                 log_level == "CRITICAL":
+=======
+            if log_level == "DEBUG" or log_level == "INFO" or \
+                    log_level == "WARNING" or log_level == "ERROR" or \
+                    log_level == "CRITICAL":
+>>>>>>> main
                 if consts.PRODUCT_NAME == "LDR_R1":
                     host = os.getenv('CONSUL_HOST', consts.CONSUL_HOST)
                     port = os.getenv('CONSUL_PORT', consts.CONSUL_PORT)
                     consul_conn = consul.Consul(host=host, port=port)
                     consul_conn.kv.put(
+<<<<<<< HEAD
                             "sspl/config/SYSTEM_INFORMATION/log_level",
                             log_level)
+=======
+                        "sspl/config/SYSTEM_INFORMATION/log_level",
+                        log_level)
+>>>>>>> main
                 else:
                     Conf.set(consts.SSPL_CONFIG_INDEX,
                              'SYSTEM_INFORMATION>log_level', log_level)
                     Conf.save(consts.SSPL_CONFIG_INDEX)
             else:
                 raise SetupError(
+<<<<<<< HEAD
                             errno.EINVAL,
                             "Unexpected log level is requested, '%s'",
                             log_level
                             )
+=======
+                    errno.EINVAL,
+                    "Unexpected log level is requested, '%s'",
+                    log_level
+                )
+>>>>>>> main

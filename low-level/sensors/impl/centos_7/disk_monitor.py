@@ -15,9 +15,9 @@
 
 """
  ****************************************************************************
-  Description:       Monitors Centos 7 systemd for service events and notifies
-                    the ServiceMsgHandler.  Detects drive add/remove event,
-                    performs SMART on drives and notifies DiskMsgHandler.
+
+  Description:Detects drive add/remove event,
+              performs SMART on drives and notifies DiskMsgHandler.
 
  ****************************************************************************
 """
@@ -52,22 +52,26 @@ from framework.utils.store_factory import file_store
 from json_msgs.messages.actuators.ack_response import AckResponseMsg
 from message_handlers.disk_msg_handler import DiskMsgHandler
 from message_handlers.node_data_msg_handler import NodeDataMsgHandler
+<<<<<<< HEAD:low-level/sensors/impl/centos_7/systemd_watchdog.py
 # Modules that receive messages from this module
 from message_handlers.service_msg_handler import ServiceMsgHandler
 from sensors.IService_watchdog import IServiceWatchdog
 
+=======
+from sensors.ISystem_monitor import ISystemMonitor
+from framework.utils.mon_utils import get_alert_id
+>>>>>>> main:low-level/sensors/impl/centos_7/disk_monitor.py
 store = file_store
 
-@implementer(IServiceWatchdog)
-class SystemdWatchdog(SensorThread, InternalMsgQ):
+@implementer(ISystemMonitor)
+class DiskMonitor(SensorThread, InternalMsgQ):
 
 
-    SENSOR_NAME       = "SystemdWatchdog"
+    SENSOR_NAME       = "DiskMonitor"
     PRIORITY          = 2
 
     # Section and keys in configuration file
-    SYSTEMDWATCHDOG    = SENSOR_NAME.upper()
-    MONITORED_SERVICES = 'monitored_services'
+    DISKMONITOR        = SENSOR_NAME.upper()
     SMART_TEST_INTERVAL= 'smart_test_interval'
     SMART_ON_START     = 'run_smart_on_start'
     SYSTEM_INFORMATION = 'SYSTEM_INFORMATION'
@@ -88,7 +92,7 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
 
     # Dependency list
     DEPENDENCIES = {
-                    "plugins": ["ServiceMsgHandler", "DiskMsgHandler", "NodeDataMsgHandler"],
+                    "plugins": ["DiskMsgHandler", "NodeDataMsgHandler"],
                     "init": ["HPIMonitor"],
                     "rpms": ["smartmontools"]
     }
@@ -104,21 +108,11 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
     @staticmethod
     def name():
         """@return: name of the module."""
-        return SystemdWatchdog.SENSOR_NAME
+        return DiskMonitor.SENSOR_NAME
 
     def __init__(self):
-        super(SystemdWatchdog, self).__init__(self.SENSOR_NAME,
+        super(DiskMonitor, self).__init__(self.SENSOR_NAME,
                                                   self.PRIORITY)
-        # Mapping of services and their status'
-        self._service_status = {}
-
-        self._monitored_services = []
-        self._inactive_services  = []
-        self._wildcard_services  = []
-
-        # Mapping of current service PIDs
-        self._service_pids = {}
-
         # Mapping of SMART jobs and their properties
         self._smart_jobs = {}
 
@@ -141,19 +135,19 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
         """initialize configuration reader and internal msg queues"""
 
         # Initialize ScheduledMonitorThread and InternalMsgQ
-        super(SystemdWatchdog, self).initialize(conf_reader)
+        super(DiskMonitor, self).initialize(conf_reader)
 
         # Initialize internal message queues for this module
-        super(SystemdWatchdog, self).initialize_msgQ(msgQlist)
+        super(DiskMonitor, self).initialize_msgQ(msgQlist)
 
         # Retrieves the frequency to run SMART tests on all the drives
         self._smart_interval = self._getSMART_interval()
 
         self._run_smart_on_start = self._can_run_smart_on_start()
-        self._log_debug(f"SystemdWatchdog, Run SMART test on start: {self._run_smart_on_start}")
+        self._log_debug(f"DiskMonitor, Run SMART test on start: {self._run_smart_on_start}")
 
         self._smart_supported = self._is_smart_supported()
-        self._log_debug(f"SystemdWatchdog, SMART supported: {self._smart_supported}")
+        self._log_debug(f"DiskMonitor, SMART supported: {self._smart_supported}")
 
         # Dict of drives by-id symlink from systemd
         self._drive_by_id = {}
@@ -203,8 +197,8 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
         if self._product in cs_products:
             # Wait for the dcs-collector to populate the /tmp/dcs/hpi directory
             while not os.path.isdir(self._hpi_base_dir):
-                logger.info(f"SystemdWatchdog, dir not found: {self._hpi_base_dir}")
-                logger.info(f"SystemdWatchdog, rechecking in {self._start_delay} secs")
+                logger.info(f"DiskMonitor, dir not found: {self._hpi_base_dir}")
+                logger.info(f"DiskMonitor, rechecking in {self._start_delay} secs")
                 time.sleep(int(self._start_delay))
 
         # Allow time for the hpi_monitor to come up
@@ -214,7 +208,7 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
 
     def read_data(self):
         """Return the dict of service status'"""
-        return self._service_status
+        return {}
 
     def run(self):
         """Run the monitoring periodically on its own thread."""
@@ -230,12 +224,6 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
         try:
             # Connect to dbus system wide
             self._bus = SystemBus()
-
-            # Get an instance of systemd1
-            systemd = self._bus.get_object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
-
-            # Use the systemd object to get an interface to the Manager
-            self._manager = Interface(systemd, dbus_interface='org.freedesktop.systemd1.Manager')
 
             # Obtain a disk manager interface for monitoring drives
             disk_systemd = self._bus.get_object('org.freedesktop.UDisks2', '/org/freedesktop/UDisks2')
@@ -263,79 +251,6 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
                 self._update_drive_faults()
                 store.put(self._existing_drive, self.disk_cache_path)
 
-            # Read in the list of services to monitor
-            self._monitored_services = self._get_monitored_services()
-
-            # Retrieve a list of all the service units
-            units = self._manager.ListUnits()
-
-            # Update the list of monitored services with wildcard entries
-            self._add_wildcard_services()
-
-            #  Start out assuming their all inactive
-            self._inactive_services = list(self._monitored_services)
-
-            logger.info("Monitoring the following services listed in /etc/sspl.conf:")
-            for unit in units:
-
-                if ".service" in unit[0]:
-                    unit_name = unit[0]
-
-                    # Apply the filter from config file if present
-                    if self._monitored_services:
-                        if unit_name not in self._monitored_services:
-                            continue
-                    logger.debug(f"    {unit_name}")
-
-                    # Retrieve an object representation of the systemd unit
-                    unit = self._bus.get_object('org.freedesktop.systemd1',
-                                                self._manager.GetUnit(unit_name))
-
-                    state = unit.Get('org.freedesktop.systemd1.Unit', 'ActiveState',
-                             dbus_interface='org.freedesktop.DBus.Properties')
-
-                    substate = unit.Get('org.freedesktop.systemd1.Unit', 'SubState',
-                             dbus_interface='org.freedesktop.DBus.Properties')
-
-                    self._service_status[str(unit_name)] = str(state) + ":" + str(substate)
-
-                    # Remove it from our inactive list; it's alive and well
-                    if state == "active":
-                        if unit_name in self._inactive_services:
-                            self._inactive_services.remove(unit_name)
-
-                    # Use the systemd unit to get an Interface to call methods
-                    Iunit = Interface(unit,
-                                      dbus_interface='org.freedesktop.systemd1.Manager')
-
-                    # Connect the PropertiesChanged signal to the unit and assign a callback
-                    Iunit.connect_to_signal('PropertiesChanged',
-                                            lambda a, b, c, p = unit :
-                                            self._on_prop_changed(a, b, c, p),
-                                            dbus_interface=dbus.PROPERTIES_IFACE)
-
-                    # Get the current PID of the service
-                    curr_pid = self._get_service_pid(unit)
-
-                    # Update the mapping of current pids
-                    self._service_pids[str(unit_name)] = curr_pid
-
-                    # Setting service_request to 'status' will case msg handler to retrieve current values
-                    msgString = json.dumps({"actuator_request_type": {
-                                    "service_watchdog_controller": {
-                                        "service_name" : unit_name,
-                                        "service_request" : "None",
-                                        "state" : state,
-                                        "previous_state" : "N/A",
-                                        "substate" : substate,
-                                        "previous_substate" : "N/A",
-                                        "pid" : curr_pid,
-                                        "previous_pid" : "N/A"
-                                        }
-                                    }
-                                 })
-                    self._write_internal_msgQ(ServiceMsgHandler.name(), msgString)
-
             # Retrieve the main loop which will be called in the run method
             self._loop = gobject.MainLoop()
 
@@ -343,30 +258,20 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
             gobject.threads_init()
             context = self._loop.get_context()
 
-            logger.info("SystemdWatchdog initialization completed")
+            logger.info("DiskMonitor initialization completed")
 
             # Leave enabled for now, it's not too verbose and handy in logs when status' change
             self._set_debug(True)
             self._set_debug_persist(True)
 
             # Loop forever iterating over the context
-            step = 0
             while self._running == True:
                 context.iteration(False)
                 time.sleep(self._thread_sleep)
 
-                if len(self._inactive_services) > 0:
-                    self._examine_inactive_services()
-
                 # Perform SMART tests and refresh drive list on a regular interval
                 if datetime.now() > self._next_smart_tm:
                     self._init_drives(stagger=True)
-
-                # Search for new wildcard services suddenly appearing, ie m0d@<fid>
-                step += 1
-                if len(self._wildcard_services) > 0 and step >= 15:
-                    step : int = 0
-                    self._search_new_services()
 
                 # Process any msgs sent to us
                 self._check_msg_queue()
@@ -382,7 +287,7 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
                 #     # Slow the main thread down to save on CPU as it gets sped up on drive removal
                 #     self._thread_sleep = 5.0
 
-            self._log_debug("SystemdWatchdog gracefully breaking out " \
+            self._log_debug("DiskMonitor gracefully breaking out " \
                                 "of dbus Loop, not restarting.")
 
         except Exception as ae:
@@ -537,54 +442,6 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
 
                         except Exception as e:
                             self._log_debug(f"_process_msg, Exception: {e}")
-
-    def _add_wildcard_services(self):
-        """Update the list of monitored services with wildcard entries"""
-        units = self._manager.ListUnits()
-        try:
-            # Look for wildcards in monitored services list and expandit
-            examined_services = copy.deepcopy(self._monitored_services)
-            for service in examined_services:
-                if "*" in service:
-                    # Remove service name from monitored_services and add to wildcard services list
-                    self._monitored_services.remove(service)
-                    self._wildcard_services.append(service)
-                    logger.info(f"Processing wildcard service: {service}")
-
-                    # Search thru list of services on the system that match the starting chars
-                    start_chars = service.split("*")[0]
-                    logger.info(f"Searching for services starting with: {start_chars}")
-                    for unit in units:
-                        unit_name = str(unit[0]).split("/")[-1]
-                        if unit_name.startswith(start_chars):
-                            logger.info(f"    {unit_name}")
-                            self._monitored_services.append(unit_name)
-        except Exception as ae:
-            logger.exception(ae)
-
-    def _search_new_services(self):
-        """Look for any new wildcard services, ie m0d@<fid>"""
-        units = self._manager.ListUnits()
-        #logger.info("Searching for new services")
-        #logger.info("inactive_services: %s" % str(self._inactive_services))
-        #logger.info("monitored_services: %s" % str(self._monitored_services))
-        #logger.info("wildcard_services: %s" % str(self._wildcard_services))
-
-        try:
-            for service in self._wildcard_services:
-                # Search thru list of services on the system that match the starting chars
-                start_chars = service.split("*")[0]
-                for unit in units:
-                    unit_name = str(unit[0]).split("/")[-1]
-
-                    if unit_name.startswith(start_chars) and \
-                       unit_name not in self._monitored_services and \
-                       unit_name not in self._inactive_services:
-                        logger.info(f"Adding newly found wildcard service: {unit_name}")
-                        self._inactive_services.append(unit_name)
-
-        except Exception as ae:
-            logger.exception(ae)
 
     def _update_by_id_paths(self):
         """Updates the global dict of by-id symlinks for each drive"""
@@ -807,6 +664,7 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
         # Update the next time to run SMART tests
         self._next_smart_tm = datetime.now() + timedelta(seconds=self._smart_interval)
 
+<<<<<<< HEAD:low-level/sensors/impl/centos_7/systemd_watchdog.py
     def _examine_inactive_services(self):
         """See if an inactive service has been successfully started
             and if so attach a callback method to its properties
@@ -956,6 +814,8 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
         """Retrieves the list of services to be monitored"""
         return Conf.get(SSPL_CONF, f"{self.SYSTEMDWATCHDOG}>{self.MONITORED_SERVICES}", [])
 
+=======
+>>>>>>> main:low-level/sensors/impl/centos_7/disk_monitor.py
     def _interface_added(self, object_path, interfaces_and_properties):
         """Callback for when an interface like drive or SMART job has been added"""
         try:
@@ -1201,7 +1061,7 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
                "response" : {
                     "alert_type": alert_type,
                     "severity": severity_reader.map_severity(alert_type),
-                    "alert_id": self._get_alert_id(event_time),
+                    "alert_id": get_alert_id(event_time),
                     "host_id": socket.getfqdn(),
                     "info": {
                         "site_id": self._site_id,
@@ -1218,14 +1078,6 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
                 }
         # Send the event to disk message handler to generate json message
         self._write_internal_msgQ(DiskMsgHandler.name(), msg)
-
-    def _get_alert_id(self, epoch_time):
-        """Returns alert id which is a combination of
-           epoch_time and salt value
-        """
-        salt = str(uuid.uuid4().hex)
-        alert_id = epoch_time + salt
-        return alert_id
 
     def _notify_msg_handler_sn_device_mappings(self, disk_path, serial_number):
         """Sends an internal msg to handlers who need to maintain a
@@ -1289,7 +1141,11 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
 
     def _getSMART_interval(self):
         """Retrieves the frequency to run SMART tests on all the drives"""
+<<<<<<< HEAD:low-level/sensors/impl/centos_7/systemd_watchdog.py
         smart_interval = int(Conf.get(SSPL_CONF, f"{self.SYSTEMDWATCHDOG}>{self.SMART_TEST_INTERVAL}",
+=======
+        smart_interval = int(Conf.get(SSPL_CONF, f"{self.DISKMONITOR}>{self.SMART_TEST_INTERVAL}",
+>>>>>>> main:low-level/sensors/impl/centos_7/disk_monitor.py
                                                          86400))
         # Add a sanity check to avoid constant looping, 15 minute minimum (900 secs)
         if smart_interval < 900:
@@ -1300,7 +1156,11 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
         """Retrieves value of "run_smart_on_start" from configuration file.Returns
            True|False based on that.
         """
+<<<<<<< HEAD:low-level/sensors/impl/centos_7/systemd_watchdog.py
         run_smart_on_start = Conf.get(SSPL_CONF, f"{self.SYSTEMDWATCHDOG}>{self.SMART_ON_START}",
+=======
+        run_smart_on_start = Conf.get(SSPL_CONF, f"{self.DISKMONITOR}>{self.SMART_ON_START}",
+>>>>>>> main:low-level/sensors/impl/centos_7/disk_monitor.py
                                                          "False")
         run_smart_on_start = run_smart_on_start.lower()
         if run_smart_on_start == 'true':
@@ -1313,13 +1173,21 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
     # TODO handle boolean values from conf file
     def _getShort_SMART_enabled(self):
         """Retrieves the flag indicating to run short tests periodically"""
+<<<<<<< HEAD:low-level/sensors/impl/centos_7/systemd_watchdog.py
         smart_interval = int(Conf.get(SSPL_CONF, f"{self.SYSTEMDWATCHDOG}>{self.SMART_SHORT_ENABLED}",
+=======
+        smart_interval = int(Conf.get(SSPL_CONF, f"{self.DISKMONITOR}>{self.SMART_SHORT_ENABLED}",
+>>>>>>> main:low-level/sensors/impl/centos_7/disk_monitor.py
                                                          86400))
         return smart_interval
 
     def _getConveyance_SMART_enabled(self):
         """Retrieves the flag indicating to run conveyance tests when a disk is inserted"""
+<<<<<<< HEAD:low-level/sensors/impl/centos_7/systemd_watchdog.py
         smart_interval = int(Conf.get(SSPL_CONF, f"{self.SYSTEMDWATCHDOG}>{self.SMART_CONVEYANCE_ENABLED}",
+=======
+        smart_interval = int(Conf.get(SSPL_CONF, f"{self.DISKMONITOR}>{self.SMART_CONVEYANCE_ENABLED}",
+>>>>>>> main:low-level/sensors/impl/centos_7/disk_monitor.py
                                                          86400))
         # Add a sanity check to avoid constant looping, 15 minute minimum (900 secs)
         if smart_interval < 900:
@@ -1359,7 +1227,7 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
             response = json.loads(response)
             try:
                 if "No such device" in response["smartctl"]["message"][0]["string"]:
-                    logger.debug(f"SystemdWatchdog, _update_drive_faults, drive {object_path} is removed, ignoring SMART test")
+                    logger.debug(f"DiskMonitor, _update_drive_faults, drive {object_path} is removed, ignoring SMART test")
                     continue
             # If smratctl command is not failing there will be no ["smartctl"]["message"][0]["string"] in response
             except (KeyError, IndexError):
@@ -1428,7 +1296,11 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
         if retcode == 0:
             return True
         else:
+<<<<<<< HEAD:low-level/sensors/impl/centos_7/systemd_watchdog.py
             logger.debug(f"SystemdWatchdog, _is_local_drive: Error for drive {drive_name}, ERROR: {err}")
+=======
+            logger.debug(f"DiskMonitor, _is_local_drive: Error for drive {drive_name}, ERROR: {err}")
+>>>>>>> main:low-level/sensors/impl/centos_7/disk_monitor.py
             # TODO : In case of different error(other than "SG_IO: bad/missing sense data") for local drives,
             # this check would fail.
             if DISK_ERR_MISSING_SENSE_DATA not in err and DISK_ERR_GET_ID_FAILURE not in err:
@@ -1438,7 +1310,7 @@ class SystemdWatchdog(SensorThread, InternalMsgQ):
 
     def shutdown(self):
         """Clean up scheduler queue and gracefully shutdown thread"""
-        super(SystemdWatchdog, self).shutdown()
+        super(DiskMonitor, self).shutdown()
 
 def is_physical_drive(interfaces_and_property):
     """

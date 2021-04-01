@@ -32,7 +32,12 @@ SSPL_LL_SETTING:
       - RealStorEnclMsgHandler
       - RealStorActuatorMsgHandler
    sensors:
+<<<<<<< HEAD
       - ServiceWatchdog
+=======
+      - DiskMonitor
+      - ServiceMonitor
+>>>>>>> main
       - RAIDsensor
       - NodeData
       - RealStorFanSensor
@@ -54,7 +59,12 @@ SSPL_LL_SETTING:
       - NodeHWactuator
       - RealStorActuator
    degraded_state_modules:
+<<<<<<< HEAD
       - ServiceWatchdog
+=======
+      - DiskMonitor
+      - ServiceMonitor
+>>>>>>> main
       - RAIDsensor
       - NodeData
       - IEMSensor
@@ -70,6 +80,7 @@ SSPL_LL_SETTING:
       - CPUFaultSensor
 
 RABBITMQINGRESSPROCESSOR:
+<<<<<<< HEAD
    virtual_host: SSPL
    queue_name: actuator-req-queue
    exchange_name: sspl-in
@@ -104,6 +115,27 @@ LOGGINGPROCESSOR:
    username: sspluser
    password: gAAAAABgB8tRJLZBfI6uCAtt4B8YYjveDvhHnFCbeKYsXuYxSLl3KZE5Tp94Jl2qQq9-X7x7_CinZZSh4cm9rMJ4G3HKz36I-Q==
    primary_rabbitmq_host: localhost
+=======
+   consumer_id: sspl_actuator
+   consumer_group: cortx_monitor
+   message_type: requests
+   offset: latest
+
+RABBITMQEGRESSPROCESSOR:
+   message_signature_username: sspl-ll
+   message_signature_token: ALOIUD986798df69a8koDISLKJ282983
+   message_signature_expires: 3600
+   limit_consul_memory: 50000000
+   producer_id: sspl-sensor
+   message_type: alerts
+   method: sync
+
+LOGGINGPROCESSOR:
+   consumer_id: sspl_in
+   consumer_group: cortx_monitor
+   message_type: IEM
+   offset: earliest
+>>>>>>> main
 
 RABBITMQCLUSTER:
    setup_rmq: true
@@ -165,7 +197,12 @@ NODEHWSENSOR:
 
 REALSTORLOGICALVOLUMESENSOR:
    threaded: true
+<<<<<<< HEAD
    polling_frequency_override: 0
+=======
+   # Polling frequency override here applicable for both Disk Group & Logical Volume monitoring
+   polling_frequency_override: 10
+>>>>>>> main
 
 REALSTORENCLOSURESENSOR:
    threaded: true
@@ -176,14 +213,33 @@ IEMSENSOR:
    log_file_path: /var/log/cortx/iem/iem_messages
    timestamp_file_path: /var/cortx/sspl/data/iem/last_processed_msg_time
 
+<<<<<<< HEAD
 SYSTEMDWATCHDOG:
    monitor: true
    threaded: true
+=======
+DISKMONITOR:
+   monitor: true
+   threaded: true
+   smart_test_interval: 999999999
+   run_smart_on_start: 'False'
+
+SERVICEMONITOR:
+   monitor: true
+   threaded: true
+   thread_sleep: 1
+   polling_frequency: 15
+   threshold_inactive_time: 180
+>>>>>>> main
    monitored_services:
       - hare-consul-agent.service
       - hare-consul-agent-c1.service
       - hare-consul-agent-c2.service
       - elasticsearch.service
+<<<<<<< HEAD
+=======
+      - multipathd.service
+>>>>>>> main
       - statsd.service
       - rsyslog.service
       - haproxy.service
@@ -193,9 +249,12 @@ SYSTEMDWATCHDOG:
       - salt-minion.service
       - glusterd.service
       - scsi-network-relay.service
+<<<<<<< HEAD
       - multipathd.service
    smart_test_interval: 999999999
    run_smart_on_start: 'False'
+=======
+>>>>>>> main
 
 NODEHWACTUATOR:
    ipmi_client: ipmitool

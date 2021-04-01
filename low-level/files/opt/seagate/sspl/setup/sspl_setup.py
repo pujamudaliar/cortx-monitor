@@ -259,6 +259,10 @@ class TestCmd(Cmd):
         """Setup and run SSPL test"""
         from files.opt.seagate.sspl.setup.sspl_test import SSPLTestCmd
         sspl_test = SSPLTestCmd(self.args)
+<<<<<<< HEAD
+=======
+        sspl_test.validate()
+>>>>>>> main
         sspl_test.process()
 
 
@@ -372,7 +376,11 @@ class CheckCmd(Cmd):
         super().__init__(args)
 
         self.SSPL_CONFIGURED="/var/cortx/sspl/sspl-configured"
+<<<<<<< HEAD
         self.services = ["rabbitmq-server"]
+=======
+        self.services = []
+>>>>>>> main
 
     def validate(self):
         # Common validator classes to check Cortx/system wide validator

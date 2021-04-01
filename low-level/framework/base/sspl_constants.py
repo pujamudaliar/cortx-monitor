@@ -20,6 +20,7 @@ import ast
 import sys
 import os
 from enum import Enum
+<<<<<<< HEAD
 
 # using cortx package
 from framework.utils.salt_util import SaltInterface
@@ -27,6 +28,15 @@ from framework.utils.service_logging import logger
 from cortx.utils.conf_store import Conf
 
 
+=======
+
+# using cortx package
+from framework.utils.salt_util import SaltInterface
+from framework.utils.service_logging import logger
+from cortx.utils.conf_store import Conf
+
+
+>>>>>>> main
 PRODUCT_NAME = 'LR2'
 PRODUCT_FAMILY = 'cortx'
 enabled_products = ["CS-A", "SINGLE","DUAL", "CLUSTER", "LDR_R1", "LR2"]
@@ -121,7 +131,7 @@ SSPL_SETTINGS = {
             "MESSAGE_HANDLERS": [],
             "SENSORS": [ "NodeHWsensor"],
         },
-        "SYSTEMDWATCHDOG": {
+        "DISKMONITOR": {
             "ACTUATORS": [],
             "CORE_PROCESSORS": [],
             "DEGRADED_STATE_MODULES": [],
@@ -156,16 +166,23 @@ SSPL_SETTINGS = {
             "MESSAGE_HANDLERS": [],
             "SENSORS": ["CPUFaultSensor"],
         },
+        "SERVICEMONITOR": {
+            "ACTUATORS": [],
+            "CORE_PROCESSORS": [],
+            "DEGRADED_STATE_MODULES": [],
+            "MESSAGE_HANDLERS": [],
+            "SENSORS": [],
+        },
 
         "_ENABLE_ALWAYS": {
             "ACTUATORS" : ["Service", "RAIDactuator", "Smartctl", "NodeHWactuator", "RealStorActuator"],
             "CORE_PROCESSORS" : ("RabbitMQegressProcessor", "RabbitMQingressProcessor", "LoggingProcessor"),
-            "DEGRADED_STATE_MODULES" : ("ServiceWatchdog", "NodeData", "IEMSensor",
+            "DEGRADED_STATE_MODULES" : ("DiskMonitor", "ServiceMonitor", "NodeData", "IEMSensor",
                 "DiskMsgHandler", "LoggingMsgHandler", "ServiceMsgHandler", "NodeDataMsgHandler",
                 "NodeControllerMsgHandler"),
             "MESSAGE_HANDLERS" : ("DiskMsgHandler", "LoggingMsgHandler", "ServiceMsgHandler", "NodeDataMsgHandler",
                 "NodeControllerMsgHandler", "RealStorEnclMsgHandler", "RealStorActuatorMsgHandler"),
-            "SENSORS" : ["ServiceWatchdog", "NodeData",  "IEMSensor"]
+            "SENSORS" : ["DiskMonitor", "ServiceMonitor", "NodeData",  "IEMSensor"]
         }
 }
 
